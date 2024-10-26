@@ -14,11 +14,14 @@ import (
 type Cotacao struct {
 	Bid string `json:"bid"`
 }
-
+                                                                  
 func main() {
 
-	dsn := "root:admin@tcp(localhost:3306)/goexpert"
+	dsn := "root:admin@tcp(localhost:3306)/cotacoes_db"
     db, err := sql.Open("mysql", dsn)
+	if err := db.Ping(); err != nil {
+    log.Fatal("Erro ao conectar ao banco de dados:", err)
+}
     if err != nil {
         log.Fatal("Erro ao conectar ao banco de dados:", err)
     }
