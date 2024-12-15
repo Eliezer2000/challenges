@@ -1,54 +1,51 @@
 package main
 
 import (
-    "context"
-    "encoding/json"
-    "fmt"
-    "io"
-    "log"
-    "net/http"
-    "os"
-    "time"
+	"context"
+	"encoding/json"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"time"
 )
 
-type Cotacao struct {
+// Estrutura para mapear a resposta do servidor
+type ServerResponse struct {
     Bid string `json:"bid"`
 }
 
 func main() {
-    ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+    // Contexto com timeout de 300ms para a requisicao ao servidor
+    ctx, cancel := context.WithTimeout(context.Background(), 300 * time.Millisecond)
     defer cancel()
+
+    // Criar a requisicao HTTP com o contexto
     req, err := http.NewRequestWithContext(ctx, "GET", "http://localhost:8080/cotacao", nil)
     if err != nil {
-        log.Fatal("Erro ao criar a requisicao: ", err)
+        log.Fatalf("Erro ao criar a requisição: %v", err)
     }
-    resp, err := http.DefaultClient.Do(req)
+
+    client := &http.Client{}
+    resp, err := client.Do(req)
     if err != nil {
-        log.Fatal("Erro ao fazer requisicao:", err)
+        log.Fatalf("Erro ao fazer a requisiçao: %v", err)
     }
     defer resp.Body.Close()
-    if resp.StatusCode != http.StatusOK {
-        log.Fatalf("Erro na resposta do servidor: %s", resp.Status)
-    }
-    body, err := io.ReadAll(resp.Body)
-    if err != nil {
-        log.Fatal("Erro ao ler o corpo da resposta:", err)
-    }
-    log.Println("Resposta do servidor:", string(body))
-    var cotacao Cotacao
-    if err := json.Unmarshal(body, &cotacao); err != nil {
-        log.Fatal("Erro ao decodificar resposta:", err)
-    }
-    if cotacao.Bid == "" {
-        log.Fatal("Erro: cotação 'bid' não foi preenchida corretamente")
-    }
-    err = writeToFile(cotacao.Bid)
-    if err != nil {
-        log.Fatal("Erro ao escrever no arquivo:", err)
-    }
-}
 
-func writeToFile(bid string) error {
-    content := fmt.Sprintf("Dólar: %s", bid)
-    return os.WriteFile("cotacao.txt", []byte(content), os.ModePerm)
+    // Decodifica a resposta JSON
+    var serverResp ServerResponse
+    if err := json.NewDecoder(resp.Body).Decode(&serverResp); err != nil {
+        log.Fatalf("Erro ao decodificar resposta JSON: %v", err)
+    }
+
+    // formata o conteúdo para salvar no arquivo
+    content := "Dólar" + serverResp.Bid + "\n"
+
+    // Escreve no arquivo "cotacao.txt"
+    err = ioutil.WriteFile("cotacao.txt", []byte(content), 0644)
+    if err != nil {
+        log.Fatalf("Erro ao escrever no arquivo: %v", err)
+    }
+
+    log.Println("Cotacao salva com sucesso em cotacao.txt")
 }
